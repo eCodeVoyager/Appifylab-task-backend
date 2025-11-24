@@ -6,8 +6,9 @@ const helmet = require('helmet');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
+const { swaggerSetup } = require('./config/swagger');
+const moduleRoutes = require('./modules');
 
 const app = express();
 
@@ -42,25 +43,18 @@ app.use(
 const allMiddlewares = [
   morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'),
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:'],
-        connectSrc: ["'self'"],
-      },
-    },
+    contentSecurityPolicy: false,
   }),
   limiter,
   hpp(),
-  mongoSanitize(),
   cookieParser(),
   express.json({ limit: '1mb' }),
   express.urlencoded({ extended: true, limit: '1mb' }),
 ];
 
 app.use(allMiddlewares);
+
+swaggerSetup(app);
 
 app.get('/', (_, res) => {
   res.json({
@@ -70,6 +64,8 @@ app.get('/', (_, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.use('/api', moduleRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
