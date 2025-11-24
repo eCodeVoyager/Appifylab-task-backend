@@ -1,46 +1,63 @@
 const likeModel = require('../models/likeModel');
 const postModel = require('../../post/models/postModel');
+const commentModel = require('../../comment/models/commentModel');
 const ApiError = require('../../../utils/apiError');
 
-const toggleLike = async (postId, userId) => {
-  const post = await postModel.findById(postId);
-  if (!post) {
-    throw ApiError.notFound('Post not found');
+const toggleLike = async (targetType, targetId, userId) => {
+  let target;
+  if (targetType === 'post') {
+    target = await postModel.findById(targetId);
+  } else if (targetType === 'comment') {
+    target = await commentModel.findById(targetId);
   }
 
-  const existingLike = await likeModel.findOne({ post: postId, user: userId });
+  if (!target) {
+    throw ApiError.notFound(
+      `${targetType.charAt(0).toUpperCase() + targetType.slice(1)} not found`
+    );
+  }
+
+  const existingLike = await likeModel.findOne({ targetType, targetId, user: userId });
 
   if (existingLike) {
     await likeModel.deleteOne({ _id: existingLike._id });
     return {
       isLiked: false,
-      message: 'Post unliked',
+      message: `${targetType.charAt(0).toUpperCase() + targetType.slice(1)} unliked`,
     };
   } else {
-    await likeModel.create({ post: postId, user: userId });
+    await likeModel.create({ targetType, targetId, user: userId });
     return {
       isLiked: true,
-      message: 'Post liked',
+      message: `${targetType.charAt(0).toUpperCase() + targetType.slice(1)} liked`,
     };
   }
 };
 
-const getLikesByPost = async (postId, { page = 1, limit = 20 }) => {
+const getLikesByTarget = async (targetType, targetId, { page = 1, limit = 20 }) => {
   const skip = (page - 1) * limit;
 
-  const post = await postModel.findById(postId);
-  if (!post) {
-    throw ApiError.notFound('Post not found');
+  let target;
+  if (targetType === 'post') {
+    target = await postModel.findById(targetId);
+  } else if (targetType === 'comment') {
+    target = await commentModel.findById(targetId);
+  }
+
+  if (!target) {
+    throw ApiError.notFound(
+      `${targetType.charAt(0).toUpperCase() + targetType.slice(1)} not found`
+    );
   }
 
   const likes = await likeModel
-    .find({ post: postId })
+    .find({ targetType, targetId })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .populate('user', 'firstName lastName email');
 
-  const total = await likeModel.countDocuments({ post: postId });
+  const total = await likeModel.countDocuments({ targetType, targetId });
 
   return {
     likes: likes.map(like => like.user),
@@ -53,24 +70,32 @@ const getLikesByPost = async (postId, { page = 1, limit = 20 }) => {
   };
 };
 
-const getLikeCount = async postId => {
-  const post = await postModel.findById(postId);
-  if (!post) {
-    throw ApiError.notFound('Post not found');
+const getLikeCount = async (targetType, targetId) => {
+  let target;
+  if (targetType === 'post') {
+    target = await postModel.findById(targetId);
+  } else if (targetType === 'comment') {
+    target = await commentModel.findById(targetId);
   }
 
-  const count = await likeModel.countDocuments({ post: postId });
+  if (!target) {
+    throw ApiError.notFound(
+      `${targetType.charAt(0).toUpperCase() + targetType.slice(1)} not found`
+    );
+  }
+
+  const count = await likeModel.countDocuments({ targetType, targetId });
   return { count };
 };
 
-const checkUserLiked = async (postId, userId) => {
-  const like = await likeModel.findOne({ post: postId, user: userId });
+const checkUserLiked = async (targetType, targetId, userId) => {
+  const like = await likeModel.findOne({ targetType, targetId, user: userId });
   return { isLiked: !!like };
 };
 
 module.exports = {
   toggleLike,
-  getLikesByPost,
+  getLikesByTarget,
   getLikeCount,
   checkUserLiked,
 };

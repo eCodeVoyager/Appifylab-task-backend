@@ -1,14 +1,16 @@
 const Joi = require('joi');
 
-const postIdParam = {
+const targetParams = {
   params: Joi.object({
-    postId: Joi.string().required(),
+    targetType: Joi.string().valid('post', 'comment').required(),
+    targetId: Joi.string().required(),
   }),
 };
 
-const getLikesByPost = {
+const getLikesByTarget = {
   params: Joi.object({
-    postId: Joi.string().required(),
+    targetType: Joi.string().valid('post', 'comment').required(),
+    targetId: Joi.string().required(),
   }),
   query: Joi.object({
     page: Joi.number().integer().min(1).default(1),
@@ -17,6 +19,6 @@ const getLikesByPost = {
 };
 
 module.exports = {
-  postIdParam,
-  getLikesByPost,
+  targetParams,
+  getLikesByTarget,
 };

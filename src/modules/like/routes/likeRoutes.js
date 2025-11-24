@@ -6,9 +6,29 @@ const likeValidation = require('../validations/likeValidation');
 
 const router = express.Router();
 
-router.post('/post/:postId', authenticate, validate(likeValidation.postIdParam), likeController.toggleLike);
-router.get('/post/:postId/users', authenticate, validate(likeValidation.getLikesByPost), likeController.getLikesByPost);
-router.get('/post/:postId/count', authenticate, validate(likeValidation.postIdParam), likeController.getLikeCount);
-router.get('/post/:postId/check', authenticate, validate(likeValidation.postIdParam), likeController.checkUserLiked);
+router.post(
+  '/:targetType/:targetId',
+  authenticate,
+  validate(likeValidation.targetParams),
+  likeController.toggleLike
+);
+router.get(
+  '/:targetType/:targetId/users',
+  authenticate,
+  validate(likeValidation.getLikesByTarget),
+  likeController.getLikesByTarget
+);
+router.get(
+  '/:targetType/:targetId/count',
+  authenticate,
+  validate(likeValidation.targetParams),
+  likeController.getLikeCount
+);
+router.get(
+  '/:targetType/:targetId/check',
+  authenticate,
+  validate(likeValidation.targetParams),
+  likeController.checkUserLiked
+);
 
 module.exports = router;
