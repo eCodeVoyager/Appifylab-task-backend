@@ -1,10 +1,24 @@
 const catchAsync = require('../../../utils/catchAsync');
 const ApiResponse = require('../../../utils/apiResponse');
 const postService = require('../services/postService');
+const { getFileType } = require('../../../utils/fileHelper');
 const { status } = require('http-status');
 
 const createPost = catchAsync(async (req, res) => {
-  const post = await postService.createPost({ ...req.body, userId: req.user.id });
+  const media = req.files
+    ? req.files.map(file => ({
+        url: `/uploads/${file.filename}`,
+        type: getFileType(file.mimetype),
+      }))
+    : [];
+
+  const post = await postService.createPost({
+    content: req.body.content,
+    privacy: req.body.privacy,
+    media,
+    userId: req.user.id,
+  });
+
   res
     .status(status.CREATED)
     .json(new ApiResponse(status.CREATED, post, 'Post created successfully'));
@@ -26,7 +40,23 @@ const getMyPosts = catchAsync(async (req, res) => {
 });
 
 const updatePost = catchAsync(async (req, res) => {
-  const post = await postService.updatePost(req.params.id, req.body, req.user.id);
+  const media = req.files
+    ? req.files.map(file => ({
+        url: `/uploads/${file.filename}`,
+        type: getFileType(file.mimetype),
+      }))
+    : undefined;
+
+  const updateData = {
+    content: req.body.content,
+    privacy: req.body.privacy,
+  };
+
+  if (media && media.length > 0) {
+    updateData.media = media;
+  }
+
+  const post = await postService.updatePost(req.params.id, updateData, req.user.id);
   res.status(status.OK).json(new ApiResponse(status.OK, post, 'Post updated successfully'));
 });
 
