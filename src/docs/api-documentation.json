@@ -207,6 +207,44 @@
           }
         }
       },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "content": {
+            "type": "string",
+            "example": "This is a comment"
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "post": {
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "parentComment": {
+            "type": "string",
+            "nullable": true,
+            "example": null,
+            "description": "Parent comment ID for replies"
+          },
+          "isDeleted": {
+            "type": "boolean",
+            "default": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "Like": {
         "type": "object",
         "properties": {
@@ -217,7 +255,12 @@
           "user": {
             "$ref": "#/components/schemas/User"
           },
-          "post": {
+          "targetType": {
+            "type": "string",
+            "enum": ["post", "comment"],
+            "example": "post"
+          },
+          "targetId": {
             "type": "string",
             "example": "507f1f77bcf86cd799439011"
           },
@@ -342,6 +385,121 @@
               "isLiked": {
                 "type": "boolean",
                 "example": true
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "CommentResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 201
+          },
+          "data": {
+            "$ref": "#/components/schemas/Comment"
+          },
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "CommentsListResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "comments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              },
+              "pagination": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "number",
+                    "example": 1
+                  },
+                  "limit": {
+                    "type": "number",
+                    "example": 20
+                  },
+                  "total": {
+                    "type": "number",
+                    "example": 50
+                  },
+                  "totalPages": {
+                    "type": "number",
+                    "example": 3
+                  }
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "RepliesListResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 200
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "replies": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              },
+              "pagination": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "number",
+                    "example": 1
+                  },
+                  "limit": {
+                    "type": "number",
+                    "example": 20
+                  },
+                  "total": {
+                    "type": "number",
+                    "example": 15
+                  },
+                  "totalPages": {
+                    "type": "number",
+                    "example": 1
+                  }
+                }
               }
             }
           },
@@ -1030,11 +1188,11 @@
         }
       }
     },
-    "/api/likes/post/{postId}": {
+    "/api/likes/{targetType}/{targetId}": {
       "post": {
         "tags": ["Likes"],
-        "summary": "Toggle like/unlike on a post",
-        "description": "Like a post if not already liked, or unlike if already liked",
+        "summary": "Toggle like/unlike on a post or comment",
+        "description": "Like a post/comment if not already liked, or unlike if already liked. Supports polymorphic likes.",
         "security": [
           {
             "bearerAuth": []
@@ -1043,12 +1201,22 @@
         "parameters": [
           {
             "in": "path",
-            "name": "postId",
+            "name": "targetType",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["post", "comment"]
+            },
+            "description": "Type of target to like (post or comment)"
+          },
+          {
+            "in": "path",
+            "name": "targetId",
             "required": true,
             "schema": {
               "type": "string"
             },
-            "description": "Post ID to like/unlike"
+            "description": "Target ID (Post ID or Comment ID)"
           }
         ],
         "responses": {
@@ -1073,7 +1241,7 @@
             }
           },
           "404": {
-            "description": "Post not found",
+            "description": "Post or comment not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1085,11 +1253,11 @@
         }
       }
     },
-    "/api/likes/post/{postId}/users": {
+    "/api/likes/{targetType}/{targetId}/users": {
       "get": {
         "tags": ["Likes"],
-        "summary": "Get list of users who liked a post",
-        "description": "Retrieve paginated list of users who liked the specified post",
+        "summary": "Get list of users who liked a post or comment",
+        "description": "Retrieve paginated list of users who liked the specified post or comment",
         "security": [
           {
             "bearerAuth": []
@@ -1098,12 +1266,22 @@
         "parameters": [
           {
             "in": "path",
-            "name": "postId",
+            "name": "targetType",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["post", "comment"]
+            },
+            "description": "Type of target (post or comment)"
+          },
+          {
+            "in": "path",
+            "name": "targetId",
             "required": true,
             "schema": {
               "type": "string"
             },
-            "description": "Post ID"
+            "description": "Target ID"
           },
           {
             "in": "query",
@@ -1149,7 +1327,7 @@
             }
           },
           "404": {
-            "description": "Post not found",
+            "description": "Post or comment not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1161,11 +1339,201 @@
         }
       }
     },
-    "/api/likes/post/{postId}/count": {
+    "/api/likes/{targetType}/{targetId}/count": {
       "get": {
         "tags": ["Likes"],
-        "summary": "Get like count for a post",
-        "description": "Get the total number of likes for a specific post",
+        "summary": "Get like count for a post or comment",
+        "description": "Get the total number of likes for a specific post or comment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "targetType",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["post", "comment"]
+            },
+            "description": "Type of target (post or comment)"
+          },
+          {
+            "in": "path",
+            "name": "targetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Like count retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeCountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Post or comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/likes/{targetType}/{targetId}/check": {
+      "get": {
+        "tags": ["Likes"],
+        "summary": "Check if current user liked a post or comment",
+        "description": "Check whether the authenticated user has liked the specified post or comment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "targetType",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["post", "comment"]
+            },
+            "description": "Type of target (post or comment)"
+          },
+          {
+            "in": "path",
+            "name": "targetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Like status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeCheckResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments/post/{postId}": {
+      "post": {
+        "tags": ["Comments"],
+        "summary": "Add a comment to a post",
+        "description": "Create a new comment on a post",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "postId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Post ID to comment on"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "example": "Great post!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Comments"],
+        "summary": "Get comments for a post",
+        "description": "Retrieve paginated list of comments for a specific post (excludes replies)",
         "security": [
           {
             "bearerAuth": []
@@ -1180,15 +1548,36 @@
               "type": "string"
             },
             "description": "Post ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Items per page"
           }
         ],
         "responses": {
           "200": {
-            "description": "Like count retrieved successfully",
+            "description": "Comments retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LikeCountResponse"
+                  "$ref": "#/components/schemas/CommentsListResponse"
                 }
               }
             }
@@ -1216,11 +1605,11 @@
         }
       }
     },
-    "/api/likes/post/{postId}/check": {
-      "get": {
-        "tags": ["Likes"],
-        "summary": "Check if current user liked a post",
-        "description": "Check whether the authenticated user has liked the specified post",
+    "/api/comments/{commentId}/reply": {
+      "post": {
+        "tags": ["Comments"],
+        "summary": "Add a reply to a comment",
+        "description": "Create a new reply to an existing comment",
         "security": [
           {
             "bearerAuth": []
@@ -1229,27 +1618,217 @@
         "parameters": [
           {
             "in": "path",
-            "name": "postId",
+            "name": "commentId",
             "required": true,
             "schema": {
               "type": "string"
             },
-            "description": "Post ID"
+            "description": "Parent comment ID"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "example": "I agree with this comment!"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
-            "description": "Like status retrieved",
+          "201": {
+            "description": "Reply added successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LikeCheckResponse"
+                  "$ref": "#/components/schemas/CommentResponse"
                 }
               }
             }
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments/{commentId}/replies": {
+      "get": {
+        "tags": ["Comments"],
+        "summary": "Get replies for a comment",
+        "description": "Retrieve paginated list of replies for a specific comment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Parent comment ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Replies retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepliesListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments/{id}": {
+      "delete": {
+        "tags": ["Comments"],
+        "summary": "Delete a comment",
+        "description": "Soft delete a comment (only the author can delete their own comments)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comment ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string",
+                          "example": "Comment deleted successfully"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Can only delete own comments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
             "content": {
               "application/json": {
                 "schema": {
