@@ -37,6 +37,7 @@
     "lodash": "^4.17.21",
     "mongoose": "^8.14.0",
     "morgan": "^1.10.0",
+    "multer": "^2.0.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },

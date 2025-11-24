@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 const { swaggerSetup } = require('./config/swagger');
 const moduleRoutes = require('./modules');
+const { uploadDir } = require('./middleware/uploadMiddleware');
 
 const app = express();
 
@@ -55,6 +56,8 @@ const allMiddlewares = [
 app.use(allMiddlewares);
 
 swaggerSetup(app);
+
+app.use('/uploads', express.static(uploadDir));
 
 app.get('/', (_, res) => {
   res.json({
